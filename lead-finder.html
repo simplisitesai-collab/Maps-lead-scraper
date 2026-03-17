@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lead Finder</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --border: #2a2a2a;
+    --accent: #c8f135;
+    --accent2: #ff6b35;
+    --text: #f0f0f0;
+    --muted: #555;
+    --success: #4ade80;
+    --error: #f87171;
+    --maps: #4285f4;
+    --wa: #25d366;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    padding: 16px 16px 80px;
+  }
+
+  header { border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 20px; }
+  header h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; }
+  header h1 span { color: var(--accent); }
+  header p { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--muted); margin-top: 3px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+
+  label { display: block; font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+
+  input, select {
+    width: 100%; background: #1a1a1a; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: 'Syne', sans-serif; font-size: 0.95rem;
+    padding: 11px 13px; margin-bottom: 12px; outline: none; transition: border-color 0.2s; -webkit-appearance: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--muted); }
+  select option { background: #1a1a1a; }
+
+  button {
+    width: 100%; padding: 12px; border: none; border-radius: 8px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.9rem;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #0d0d0d; margin-top: 4px; }
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-csv { background: transparent; border: 1px solid var(--success); color: var(--success); font-size: 0.82rem; padding: 9px; margin-bottom: 10px; }
+  .btn-csv:hover { background: #4ade8011; }
+  .btn-csv.wa { border-color: var(--wa); color: var(--wa); }
+  .btn-csv.wa:hover { background: #25d36611; }
+
+  .btn-clear { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 0.78rem; padding: 8px; margin-top: 6px; }
+  .btn-clear:hover { border-color: var(--error); color: var(--error); }
+
+  .settings-toggle {
+    font-family: 'Space Mono', monospace; font-size: 0.68rem; color: var(--muted);
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    cursor: pointer; padding: 7px 12px; width: auto; margin-top: 10px;
+    display: inline-block; transition: border-color 0.2s, color 0.2s;
+  }
+  .settings-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+  .settings-panel { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: none; }
+  .settings-panel.open { display: block; }
+
+  /* Status */
+  .status-bar { display: flex; align-items: center; gap: 8px; font-family: 'Space Mono', monospace; font-size: 0.68rem; color: var(--muted); padding: 8px 0 4px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .dot.active { background: var(--accent); animation: pulse 1s infinite; }
+  .dot.done { background: var(--success); }
+  .dot.error { background: var(--error); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .progress-bar-wrap { background: var(--border); border-radius: 4px; height: 3px; margin: 6px 0 12px; overflow: hidden; }
+  .progress-bar { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.4s ease; width: 0%; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-bottom: 14px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 4px; text-align: center; }
+  .stat-num { font-size: 1.3rem; font-weight: 800; line-height: 1; }
+  .stat-num.yellow { color: var(--accent); }
+  .stat-num.green  { color: var(--success); }
+  .stat-num.blue   { color: var(--maps); }
+  .stat-num.wa     { color: var(--wa); }
+  .stat-label { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 3px; font-family: 'Space Mono', monospace; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .tab {
+    flex: 1; padding: 9px 6px; border-radius: 8px; border: 1px solid var(--border);
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.78rem;
+    cursor: pointer; background: transparent; color: var(--muted); transition: all 0.15s;
+  }
+  .tab.active-tab { background: var(--accent); color: #0d0d0d; border-color: var(--accent); }
+  .tab.wa-tab.active-tab { background: var(--wa); border-color: var(--wa); color: #0d0d0d; }
+  .tab:not(.active-tab):hover { border-color: var(--accent); color: var(--accent); }
+  .tab.wa-tab:not(.active-tab):hover { border-color: var(--wa); color: var(--wa); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .section-title { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .leads-list { display: flex; flex-direction: column; gap: 10px; }
+
+  /* Lead cards */
+  .lead-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 13px; border-left: 3px solid var(--accent); animation: slideIn 0.2s ease;
+  }
+  .lead-card.wa-card { border-left-color: var(--wa); }
+
+  @keyframes slideIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+
+  .lead-name { font-weight: 700; font-size: 0.92rem; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .wa-badge {
+    font-family: 'Space Mono', monospace; font-size: 0.55rem; font-weight: 700;
+    background: #25d36620; border: 1px solid #25d36650; color: var(--wa);
+    padding: 1px 6px; border-radius: 10px; white-space: nowrap;
+  }
+
+  .lead-meta { font-family: 'Space Mono', monospace; font-size: 0.62rem; color: var(--muted); line-height: 1.9; }
+  .lead-meta span { color: var(--text); }
+  .lead-meta .no-web { color: var(--error); font-weight: 700; }
+
+  .lead-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+
+  .act-btn {
+    flex: 1; min-width: 80px; font-family: 'Space Mono', monospace; font-size: 0.6rem; font-weight: 700;
+    padding: 8px 4px; border-radius: 6px; cursor: pointer; text-decoration: none;
+    text-align: center; display: flex; align-items: center; justify-content: center;
+    gap: 4px; transition: background 0.15s; border: none;
+  }
+  .act-maps { background: #4285f415; border: 1px solid #4285f440; color: var(--maps); }
+  .act-maps:hover { background: #4285f425; }
+  .act-call { background: #4ade8015; border: 1px solid #4ade8040; color: var(--success); }
+  .act-call:hover { background: #4ade8025; }
+  .act-call.off { opacity: 0.3; pointer-events: none; }
+  .act-wa { background: #25d36615; border: 1px solid #25d36640; color: var(--wa); }
+  .act-wa:hover { background: #25d36625; }
+
+  .empty-state { text-align: center; padding: 32px 16px; color: var(--muted); font-family: 'Space Mono', monospace; font-size: 0.7rem; line-height: 1.9; }
+  .empty-state .icon { font-size: 2rem; margin-bottom: 10px; }
+
+  .error-box {
+    background: #f8717112; border: 1px solid #f8717135; border-radius: 8px;
+    padding: 12px; font-family: 'Space Mono', monospace; font-size: 0.65rem;
+    color: var(--error); line-height: 1.9; margin-bottom: 12px; display: none;
+  }
+  .error-box b { color: #fca5a5; }
+
+  .free-badge {
+    display: inline-block; background: #c8f13518; border: 1px solid #c8f13540;
+    color: var(--accent); font-family: 'Space Mono', monospace; font-size: 0.57rem;
+    padding: 2px 7px; border-radius: 20px; margin-left: 6px; vertical-align: middle;
+  }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%;
+    transform: translateX(-50%) translateY(70px);
+    background: #1e1e1e; border: 1px solid var(--accent); color: var(--accent);
+    font-family: 'Space Mono', monospace; font-size: 0.7rem; padding: 10px 18px;
+    border-radius: 8px; transition: transform 0.3s ease; z-index: 999;
+    white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .guide-body { font-family: 'Space Mono', monospace; font-size: 0.66rem; color: var(--muted); line-height: 2.1; }
+  .guide-body .gh { color: var(--accent); font-weight: 700; }
+  .guide-body .gw { color: var(--text); }
+  .guide-body .gn { color: var(--accent2); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Lead<span>Finder</span> 🎯</h1>
+  <p>find businesses with no website → export CSV</p>
+</header>
+
+<!-- Search Card -->
+<div class="card">
+  <label>Business Keyword</label>
+  <input type="text" id="inputCategory" placeholder="e.g. dental clinic, bakery, gym, hotel..." autocomplete="off" />
+
+  <label>City, Area or Country</label>
+  <input type="text" id="inputCity" placeholder="e.g. Dubai UAE, Manchester UK, Lahore Pakistan..." autocomplete="off" />
+
+  <label>How Many to Scan</label>
+  <select id="resultCount">
+    <option value="20" selected>20 businesses</option>
+    <option value="40">40 businesses (2 pages)</option>
+    <option value="60">60 businesses (3 pages)</option>
+  </select>
+
+  <button class="btn-primary" id="searchBtn" onclick="startSearch()">🔍 Find Leads</button>
+
+  <button class="settings-toggle" onclick="toggleSettings()">⚙️ API Key Settings</button>
+  <div class="settings-panel" id="settingsPanel">
+    <label>HasData API Key <span class="free-badge">FREE · No Card</span></label>
+    <input type="password" id="apiKey" placeholder="Paste your HasData key here..." oninput="saveSettings()" />
+    <p style="font-family:'Space Mono',monospace;font-size:0.62rem;color:var(--muted);margin-top:-6px;line-height:1.8">
+      Get free key → <b style="color:var(--text)">app.hasdata.com</b><br>
+      Sign up with Google → Profile → API Key → copy
+    </p>
+  </div>
+</div>
+
+<!-- Error -->
+<div class="error-box" id="errorBox"></div>
+
+<!-- Status -->
+<div id="statusBar" class="status-bar" style="display:none">
+  <div class="dot active" id="statusDot"></div>
+  <span id="statusText">Starting...</span>
+</div>
+<div class="progress-bar-wrap" id="progressWrap" style="display:none">
+  <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<!-- Stats -->
+<div class="stats" id="statsRow" style="display:none">
+  <div class="stat"><div class="stat-num yellow" id="statScanned">0</div><div class="stat-label">Scanned</div></div>
+  <div class="stat"><div class="stat-num green"  id="statLeads">0</div><div class="stat-label">No Website</div></div>
+  <div class="stat"><div class="stat-num blue"   id="statMaps">0</div><div class="stat-label">Maps Links</div></div>
+  <div class="stat"><div class="stat-num wa"     id="statWa">0</div><div class="stat-label">WhatsApp</div></div>
+</div>
+
+<!-- Results tabs -->
+<div id="resultsSection" style="display:none">
+  <div class="tabs">
+    <button class="tab active-tab" id="tabLeads" onclick="switchTab('leads')">🎯 No Website (<span id="tabLeadsCount">0</span>)</button>
+    <button class="tab wa-tab"     id="tabWa"    onclick="switchTab('wa')">💬 WhatsApp (<span id="tabWaCount">0</span>)</button>
+  </div>
+
+  <!-- No-website tab -->
+  <div class="tab-panel active" id="panelLeads">
+    <button class="btn-csv" onclick="exportCSV('leads')">📥 Download No-Website Leads CSV</button>
+    <div class="leads-list" id="leadsList"></div>
+  </div>
+
+  <!-- WhatsApp tab -->
+  <div class="tab-panel" id="panelWa">
+    <button class="btn-csv wa" onclick="exportCSV('wa')">📥 Download WhatsApp Leads CSV</button>
+    <div class="leads-list" id="waList"></div>
+    <div id="waEmpty" class="empty-state" style="display:none">
+      <div class="icon">💬</div>
+      No WhatsApp numbers detected yet.<br>WhatsApp leads appear here automatically<br>when phone numbers are found.
+    </div>
+  </div>
+
+  <button class="btn-clear" onclick="clearLeads()">🗑 Clear All Leads</button>
+</div>
+
+<div id="emptyState" class="empty-state" style="display:none">
+  <div class="icon">🤷</div>
+  All businesses here already have websites.<br>Try a different area or keyword.
+</div>
+
+<!-- Guide -->
+<div class="card" style="margin-top:20px">
+  <div class="section-title" style="margin-bottom:10px">📖 Setup Guide</div>
+  <div class="guide-body">
+    <span class="gh">STEP 1 — Free API Key</span><br>
+    1. Open <span class="gw">app.hasdata.com</span><br>
+    2. Sign up with Google — no card needed<br>
+    3. Profile → API Key → copy it<br>
+    4. Tap ⚙️ above → paste the key<br>
+    <span class="gn">→ 1,000 free credits = ~200 searches</span><br><br>
+    <span class="gh">STEP 2 — Deploy to Netlify (fixes API)</span><br>
+    1. Save this file → go to <span class="gw">netlify.com</span><br>
+    2. Sign up free → upload this HTML file<br>
+    3. Use the Netlify live URL always<br>
+    <span class="gn">→ Required: local files block API calls</span><br><br>
+    <span class="gh">STEP 3 — Search</span><br>
+    1. Enter keyword + location → Find Leads<br>
+    2. 🎯 Tab = businesses with no website<br>
+    3. 💬 Tab = leads that also have WhatsApp<br>
+    4. Download CSV saves all leads with Maps links<br><br>
+    <span class="gh">💡 Tips</span><br>
+    • Specific areas give better results<br>
+    • WhatsApp tab = easier to reach leads<br>
+    • Leads stay saved if browser is closed
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────
+let noWebLeads = [];   // businesses with no website
+let waLeads    = [];   // subset: also have a phone (likely WhatsApp)
+let stats      = { scanned: 0, leads: 0, maps: 0, wa: 0 };
+let activeTab  = 'leads';
+
+// ── CORS Proxies ───────────────────────────────────────
+// Each proxy fn takes (url, apiKey) and returns {fetchUrl, headers}
+const PROXIES = [
+  (u, k) => ({ fetchUrl: `https://corsproxy.io/?url=${encodeURIComponent(u)}`,     headers: { 'x-api-key': k } }),
+  (u, k) => ({ fetchUrl: `https://api.allorigins.win/raw?url=${encodeURIComponent(u + (u.includes('?') ? '&' : '?') + 'apikey=' + k)}`, headers: {} }),
+  (u, k) => ({ fetchUrl: u, headers: { 'x-api-key': k } }) // direct (works on Netlify)
+];
+
+// ── Init ───────────────────────────────────────────────
+window.onload = () => {
+  document.getElementById('apiKey').value = localStorage.getItem('lf_apiKey') || '';
+  if (document.getElementById('apiKey').value) {
+    document.getElementById('settingsPanel').classList.add('open');
+  }
+  try {
+    const s = localStorage.getItem('lf_leads');
+    if (s) {
+      const saved = JSON.parse(s);
+      noWebLeads = saved.noWeb || [];
+      waLeads    = saved.wa    || [];
+      if (noWebLeads.length || waLeads.length) {
+        stats.leads = noWebLeads.length;
+        stats.wa    = waLeads.length;
+        stats.maps  = noWebLeads.filter(l => l.mapsUrl).length;
+        renderAllLeads();
+      }
+    }
+  } catch(e) { noWebLeads = []; waLeads = []; }
+};
+
+function saveSettings() {
+  localStorage.setItem('lf_apiKey', document.getElementById('apiKey').value.trim());
+}
+
+function persist() {
+  localStorage.setItem('lf_leads', JSON.stringify({ noWeb: noWebLeads, wa: waLeads }));
+}
+
+// ── UI helpers ─────────────────────────────────────────
+function toggleSettings() { document.getElementById('settingsPanel').classList.toggle('open'); }
+
+function setStatus(text, state = 'active') {
+  document.getElementById('statusBar').style.display = 'flex';
+  document.getElementById('statusText').textContent = text;
+  document.getElementById('statusDot').className = 'dot ' + state;
+}
+
+function setProgress(pct) {
+  document.getElementById('progressWrap').style.display = 'block';
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+function updateStats() {
+  document.getElementById('statsRow').style.display = 'grid';
+  document.getElementById('statScanned').textContent = stats.scanned;
+  document.getElementById('statLeads').textContent   = stats.leads;
+  document.getElementById('statMaps').textContent    = stats.maps;
+  document.getElementById('statWa').textContent      = stats.wa;
+  document.getElementById('tabLeadsCount').textContent = stats.leads;
+  document.getElementById('tabWaCount').textContent    = stats.wa;
+}
+
+function showError(msg) {
+  const b = document.getElementById('errorBox');
+  b.innerHTML = msg; b.style.display = 'block';
+}
+function hideError() { document.getElementById('errorBox').style.display = 'none'; }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('panelLeads').classList.toggle('active', tab === 'leads');
+  document.getElementById('panelWa').classList.toggle('active',    tab === 'wa');
+  document.getElementById('tabLeads').classList.toggle('active-tab', tab === 'leads');
+  document.getElementById('tabWa').classList.toggle('active-tab',    tab === 'wa');
+}
+
+// ── Maps URL builder ───────────────────────────────────
+// Uses the correct Google Maps place_id deep link format
+function buildMapsUrl(name, address, placeId) {
+  // place_id link opens exact business profile
+  if (placeId && placeId.length > 5) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}&query_place_id=${placeId}`;
+  }
+  // Fallback: search by name + address
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name + ' ' + address)}`;
+}
+
+// ── WhatsApp link builder ──────────────────────────────
+function buildWaUrl(phone) {
+  if (!phone) return null;
+  // Strip non-digits, add Pakistan +92 default if no country code
+  let digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('0')) digits = '92' + digits.slice(1);
+  if (!digits.startsWith('92') && digits.length <= 11) digits = '92' + digits;
+  return `https://wa.me/${digits}`;
+}
+
+// Detect if a number is likely on WhatsApp (mobile Pakistani numbers)
+function likelyWhatsApp(phone) {
+  if (!phone) return false;
+  const digits = phone.replace(/\D/g, '');
+  // Pakistani mobile prefixes: 03xx = Zong/Jazz/Telenor/Ufone/Warid
+  // Also accept numbers with country code 92 3xx
+  return /^(03\d{9}|923\d{9}|\+923\d{9})$/.test(phone.replace(/\s/g,'')) ||
+         /^(03[0-9]{2})/.test(digits) ||
+         (digits.length >= 10 && digits.length <= 13);
+}
+
+// ── Fetch with proxy fallback ──────────────────────────
+async function fetchWithProxy(targetUrl, apiKey) {
+  for (let i = 0; i < PROXIES.length; i++) {
+    const { fetchUrl, headers } = PROXIES[i](targetUrl, apiKey);
+    try {
+      setStatus(`Connecting... (method ${i + 1}/${PROXIES.length})`);
+      const res = await fetch(fetchUrl, { headers });
+      if (res.status === 401 || res.status === 403) return { authError: true };
+      if (res.status === 402) return { creditsError: true };
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data && data.localResults !== undefined) return { data };
+    } catch(e) { /* try next */ }
+  }
+  return { networkError: true };
+}
+
+// ── Main search ────────────────────────────────────────
+async function startSearch() {
+  const apiKey   = document.getElementById('apiKey').value.trim();
+  const category = document.getElementById('inputCategory').value.trim();
+  const city     = document.getElementById('inputCity').value.trim();
+  const total    = parseInt(document.getElementById('resultCount').value);
+
+  if (!apiKey)    { document.getElementById('settingsPanel').classList.add('open'); showToast('⚠️ Enter your HasData API key first'); return; }
+  if (!category)  { showToast('⚠️ Enter a business keyword'); return; }
+  if (!city)      { showToast('⚠️ Enter a city or location'); return; }
+
+  // Reset UI
+  document.getElementById('searchBtn').disabled = true;
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('leadsList').innerHTML = '';
+  document.getElementById('waList').innerHTML = '';
+  document.getElementById('waEmpty').style.display = 'none';
+  hideError();
+  stats = { scanned: 0, leads: 0, maps: 0, wa: 0 };
+  updateStats();
+  setProgress(3);
+
+  // Paginate: 20 per page, so 40 = 2 pages, 60 = 3 pages
+  const pages   = Math.ceil(total / 20);
+  const offsets = Array.from({ length: pages }, (_, i) => i * 20); // [0], [0,20], [0,20,40]
+  const query   = `${category} in ${city}`;
+  let allPlaces = [];
+  let newLeads  = 0;
+
+  for (let p = 0; p < offsets.length; p++) {
+    const offset = offsets[p];
+    setStatus(`Page ${p + 1}/${pages}: fetching results ${offset + 1}–${offset + 20}...`);
+    setProgress(5 + (p / pages) * 40);
+
+    const url = `https://api.hasdata.com/scrape/google-maps/search?q=${encodeURIComponent(query)}&start=${offset}`;
+    const result = await fetchWithProxy(url, apiKey);
+
+    if (result.authError) {
+      setStatus('Invalid API key', 'error');
+      showError(`<b>❌ API Key Error</b><br>Your HasData key was rejected.<br>Go to app.hasdata.com → Profile → API Key and copy it again.`);
+      document.getElementById('searchBtn').disabled = false;
+      return;
+    }
+    if (result.creditsError) {
+      setStatus('No credits remaining', 'error');
+      showError(`<b>❌ No Credits Left</b><br>Your free credits are used up.<br>Sign in at app.hasdata.com to check balance.`);
+      document.getElementById('searchBtn').disabled = false;
+      return;
+    }
+    if (result.networkError) {
+      setStatus('Connection failed', 'error');
+      showError(`<b>❌ Connection Failed</b><br>
+        Deploy this file to Netlify to fix this:<br>
+        1. netlify.com → sign up free<br>
+        2. Upload this HTML file<br>
+        3. Use the live Netlify URL always`);
+      document.getElementById('searchBtn').disabled = false;
+      return;
+    }
+
+    const page = result.data.localResults || [];
+    if (!page.length) break; // no more results
+    allPlaces = allPlaces.concat(page);
+    await delay(300); // small pause between pages
+  }
+
+  if (!allPlaces.length) {
+    setStatus('No businesses found', 'done');
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('searchBtn').disabled = false;
+    return;
+  }
+
+  // Deduplicate by placeId
+  const seen = new Set();
+  allPlaces = allPlaces.filter(p => {
+    const key = p.placeId || (p.title + p.address);
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+
+  setStatus(`Checking ${allPlaces.length} businesses for websites...`);
+
+  for (let i = 0; i < allPlaces.length; i++) {
+    const p = allPlaces[i];
+    stats.scanned++;
+    const pct = 45 + ((i + 1) / allPlaces.length) * 52;
+    setProgress(pct);
+    setStatus(`Checking ${i + 1}/${allPlaces.length}: ${p.title || '...'}`);
+    updateStats();
+
+    const hasWebsite = p.website && p.website.trim() !== '' && p.website.toLowerCase() !== 'none';
+    if (hasWebsite) { await delay(20); continue; }
+
+    const placeId = p.placeId || p.place_id || '';
+    const name    = p.title   || 'Unknown Business';
+    const address = p.address || p.addressLine || '';
+    const phone   = p.phone   || p.phoneNumber || null;
+    const mapsUrl = buildMapsUrl(name, address, placeId);
+    const leadId  = placeId || (name + '|' + address);
+
+    if (mapsUrl) stats.maps++;
+
+    const lead = {
+      id:      leadId,
+      name,
+      phone,
+      address,
+      rating:  p.rating        || p.stars    || null,
+      reviews: p.reviewsCount  || p.reviews  || null,
+      category,
+      city,
+      mapsUrl,
+      waUrl:   buildWaUrl(phone),
+      hasWa:   likelyWhatsApp(phone),
+      websiteStatus: 'No Website',
+      foundAt: new Date().toISOString()
+    };
+
+    // Avoid duplicates
+    if (!noWebLeads.find(l => l.id === lead.id)) {
+      stats.leads++;
+      noWebLeads.push(lead);
+      addLeadCard(lead, 'leads');
+      newLeads++;
+
+      if (lead.hasWa) {
+        stats.wa++;
+        waLeads.push(lead);
+        addLeadCard(lead, 'wa');
+      }
+
+      persist();
+      updateStats();
+    }
+
+    await delay(30);
+  }
+
+  setProgress(100);
+  document.getElementById('resultsSection').style.display = 'block';
+
+  if (stats.wa === 0) {
+    document.getElementById('waEmpty').style.display = 'block';
+  }
+
+  if (newLeads === 0) {
+    setStatus(`Done — all businesses already have websites`, 'done');
+    if (!noWebLeads.length) document.getElementById('emptyState').style.display = 'block';
+  } else {
+    setStatus(`Done! ${newLeads} leads found — ${stats.wa} with WhatsApp ✓`, 'done');
+  }
+
+  showToast(`✅ ${newLeads} leads · ${stats.wa} WhatsApp`);
+  document.getElementById('searchBtn').disabled = false;
+}
+
+// ── Render a lead card ─────────────────────────────────
+function addLeadCard(lead, target) {
+  const list = document.getElementById(target === 'wa' ? 'waList' : 'leadsList');
+  const card = document.createElement('div');
+  card.className = 'lead-card' + (lead.hasWa ? ' wa-card' : '');
+
+  const ratingStr = lead.rating
+    ? `⭐ <span>${lead.rating}/5${lead.reviews ? ` (${lead.reviews} reviews)` : ''}</span>`
+    : `⭐ <span style="color:var(--muted)">No rating</span>`;
+
+  const waBtn = lead.hasWa
+    ? `<a class="act-btn act-wa" href="${lead.waUrl}" target="_blank" rel="noopener">💬 WhatsApp</a>`
+    : '';
+
+  card.innerHTML = `
+    <div class="lead-name">
+      ${esc(lead.name)}
+      ${lead.hasWa ? '<span class="wa-badge">💬 WhatsApp</span>' : ''}
+    </div>
+    <div class="lead-meta">
+      📞 <span>${lead.phone || '<span style="color:var(--muted)">No phone</span>'}</span><br>
+      📍 <span>${esc(lead.address) || '<span style="color:var(--muted)">No address</span>'}</span><br>
+      ${ratingStr}<br>
+      🌐 Website: <span class="no-web">❌ No Website</span>
+    </div>
+    <div class="lead-actions">
+      <a class="act-btn act-maps" href="${lead.mapsUrl}" target="_blank" rel="noopener">📍 Maps</a>
+      ${lead.phone
+        ? `<a class="act-btn act-call" href="tel:${lead.phone}">📞 Call</a>`
+        : `<span class="act-btn act-call off">📞 No#</span>`}
+      ${waBtn}
+    </div>
+  `;
+  list.prepend(card);
+}
+
+function renderAllLeads() {
+  document.getElementById('resultsSection').style.display = 'block';
+  document.getElementById('statsRow').style.display = 'grid';
+  updateStats();
+  noWebLeads.slice().reverse().forEach(l => addLeadCard(l, 'leads'));
+  waLeads.slice().reverse().forEach(l => addLeadCard(l, 'wa'));
+  if (!waLeads.length) document.getElementById('waEmpty').style.display = 'block';
+}
+
+function clearLeads() {
+  if (!confirm('Clear all saved leads? Cannot be undone.')) return;
+  noWebLeads = []; waLeads = [];
+  localStorage.removeItem('lf_leads');
+  document.getElementById('leadsList').innerHTML = '';
+  document.getElementById('waList').innerHTML = '';
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('statsRow').style.display = 'none';
+  stats = { scanned: 0, leads: 0, maps: 0, wa: 0 };
+  showToast('🗑 All leads cleared');
+}
+
+// ── CSV export ─────────────────────────────────────────
+function exportCSV(type) {
+  const list = type === 'wa' ? waLeads : noWebLeads;
+  if (!list.length) { showToast('No leads to export yet'); return; }
+
+  const headers = ['Business Name','Phone','Address','Category','City','Rating','Reviews','Website Status','Google Maps Link','WhatsApp Link','Found On'];
+  const rows = list.map(l => [
+    q(l.name), q(l.phone || ''), q(l.address || ''),
+    q(l.category), q(l.city),
+    l.rating || '', l.reviews || '',
+    'No Website',
+    q(l.mapsUrl || ''),
+    q(l.waUrl   || ''),
+    new Date(l.foundAt).toLocaleDateString()
+  ]);
+
+  const csv  = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  const kw   = (document.getElementById('inputCategory').value || 'leads').replace(/\s+/g,'_');
+  const tag  = type === 'wa' ? '_whatsapp' : '';
+  a.download = `leads${tag}_${kw}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`📥 Exported ${list.length} leads`);
+}
+
+// ── Helpers ────────────────────────────────────────────
+function q(v)   { return `"${String(v||'').replace(/"/g,'""')}"`; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
